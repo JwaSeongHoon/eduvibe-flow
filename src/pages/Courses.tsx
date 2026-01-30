@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { motion } from "framer-motion";
-import { mockCourses, categories } from "@/data/mockData";
+import { categories } from "@/data/mockData";
 import { useCourses } from "@/hooks/useCourses";
 
 export default function Courses() {
@@ -22,29 +22,25 @@ export default function Courses() {
   const [sortBy, setSortBy] = useState("popular");
   const { courses: dbCourses, loading } = useCourses();
 
-  // Combine DB courses with mock courses (DB courses first)
-  const allCourses: CourseCardProps[] = useMemo(() => {
-    const dbCourseCards: CourseCardProps[] = dbCourses.map((c) => ({
-      id: c.id,
-      title: c.title,
-      instructor: c.instructor,
-      thumbnail: c.thumbnail_url || "https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=600&h=340&fit=crop",
-      rating: 4.8,
-      reviewCount: 100,
-      duration: c.duration || "10시간",
-      price: c.price,
-      originalPrice: c.original_price || undefined,
-      badges: c.is_published ? ["DB"] : ["미공개"],
-    }));
-    
-    // Filter out mock courses that might have same title as DB courses
-    const dbTitles = new Set(dbCourses.map((c) => c.title.toLowerCase()));
-    const filteredMocks = mockCourses.filter(
-      (m) => !dbTitles.has(m.title.toLowerCase())
-    );
-    
-    return [...dbCourseCards, ...filteredMocks];
-  }, [dbCourses]);
+  // DB 강의만 표시
+  const allCourses: CourseCardProps[] = useMemo(
+    () =>
+      dbCourses.map((c) => ({
+        id: c.id,
+        title: c.title,
+        instructor: c.instructor,
+        thumbnail:
+          c.thumbnail_url ||
+          "https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=600&h=340&fit=crop",
+        rating: 4.8,
+        reviewCount: 0,
+        duration: c.duration || "",
+        price: c.price,
+        originalPrice: c.original_price || undefined,
+        badges: c.is_published ? ["DB"] : ["DB", "미공개"],
+      })),
+    [dbCourses]
+  );
 
   const filteredCourses = allCourses.filter((course) =>
     course.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -114,22 +110,28 @@ export default function Courses() {
         </motion.div>
 
         {/* Course Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredCourses.map((course, index) => (
-            <motion.div
-              key={course.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 + index * 0.05 }}
-            >
-              <CourseCard {...course} />
-            </motion.div>
-          ))}
-        </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <p className="text-muted-foreground">강의 목록을 불러오는 중...</p>
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredCourses.map((course, index) => (
+              <motion.div
+                key={course.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 + index * 0.05 }}
+              >
+                <CourseCard {...course} />
+              </motion.div>
+            ))}
+          </div>
+        )}
 
-        {filteredCourses.length === 0 && (
+        {!loading && filteredCourses.length === 0 && (
           <div className="text-center py-16">
-            <p className="text-muted-foreground">검색 결과가 없습니다.</p>
+            <p className="text-muted-foreground">표시할 DB 강의가 없습니다.</p>
           </div>
         )}
       </main>
