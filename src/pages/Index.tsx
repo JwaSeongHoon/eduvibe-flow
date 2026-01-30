@@ -3,9 +3,27 @@ import { HeroBanner } from "@/components/home/HeroBanner";
 import { CourseCarousel } from "@/components/course/CourseCarousel";
 import { CategoryTabs } from "@/components/course/CategoryTabs";
 import { AITutorButton } from "@/components/ai/AITutorButton";
-import { mockCourses, categories } from "@/data/mockData";
+import { categories } from "@/data/mockData";
+import { useCourses } from "@/hooks/useCourses";
+import { Loader2 } from "lucide-react";
 
 const Index = () => {
+  const { courses, loading } = useCourses();
+
+  const publishedCourses = courses.filter((c) => c.is_published);
+  const courseCards = publishedCourses.map((c) => ({
+    id: c.id,
+    title: c.title,
+    instructor: c.instructor,
+    thumbnail: c.thumbnail_url || "/placeholder.svg",
+    rating: 4.9,
+    reviewCount: 0,
+    duration: c.duration || "",
+    price: c.price,
+    originalPrice: c.original_price || undefined,
+    badges: [],
+  }));
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -19,23 +37,31 @@ const Index = () => {
       </section>
 
       {/* Course Carousels */}
-      <CourseCarousel
-        title="🔥 실시간 BEST 강의"
-        subtitle="지금 가장 인기 있는 강의를 만나보세요"
-        courses={mockCourses}
-      />
+      {loading ? (
+        <section className="container py-16 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </section>
+      ) : (
+        <>
+          <CourseCarousel
+            title="🔥 실시간 BEST 강의"
+            subtitle="지금 가장 인기 있는 강의를 만나보세요"
+            courses={courseCards}
+          />
 
-      <CourseCarousel
-        title="✨ AI 추천 강의"
-        subtitle="당신의 학습 성향에 맞춘 맞춤 추천"
-        courses={[...mockCourses].reverse()}
-      />
+          <CourseCarousel
+            title="✨ AI 추천 강의"
+            subtitle="당신의 학습 성향에 맞춘 맞춤 추천"
+            courses={[...courseCards].reverse()}
+          />
 
-      <CourseCarousel
-        title="🚀 신규 강의"
-        subtitle="새롭게 출시된 따끈따끈한 강의"
-        courses={mockCourses.filter((c) => c.badges?.includes("NEW"))}
-      />
+          <CourseCarousel
+            title="🚀 신규 강의"
+            subtitle="새롭게 출시된 따끈따끈한 강의"
+            courses={courseCards.slice(0, 12)}
+          />
+        </>
+      )}
 
       {/* Footer */}
       <footer className="border-t border-border mt-16">
