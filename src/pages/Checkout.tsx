@@ -4,7 +4,7 @@ import { loadTossPayments, TossPaymentsWidgets } from "@tosspayments/tosspayment
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { mockCourses } from "@/data/mockData";
+import { useCourse } from "@/hooks/useCourses";
 import { Loader2, ShieldCheck, CreditCard } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -15,8 +15,7 @@ export default function Checkout() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, loading: authLoading } = useAuth();
-  
-  const course = mockCourses.find((c) => c.id === courseId) || mockCourses[0];
+  const { course, loading: courseLoading } = useCourse(courseId);
   
   const [ready, setReady] = useState(false);
   const [widgets, setWidgets] = useState<TossPaymentsWidgets | null>(null);
@@ -34,7 +33,7 @@ export default function Checkout() {
 
   // 토스페이먼츠 위젯 초기화
   useEffect(() => {
-    if (!user || !course) return;
+    if (!user || !course || courseLoading) return;
 
     async function initTossPayments() {
       try {
@@ -74,7 +73,7 @@ export default function Checkout() {
     }
 
     initTossPayments();
-  }, [user, course]);
+  }, [user, course, courseLoading]);
 
   const handlePayment = async () => {
     if (!widgets || !user || !course) return;
@@ -99,7 +98,7 @@ export default function Checkout() {
     }
   };
 
-  if (authLoading) {
+  if (authLoading || courseLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -111,8 +110,16 @@ export default function Checkout() {
     return null;
   }
 
-  const discount = course.originalPrice
-    ? Math.round(((course.originalPrice - course.price) / course.originalPrice) * 100)
+  if (!course) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">강좌를 찾을 수 없습니다.</p>
+      </div>
+    );
+  }
+
+  const discount = course.original_price
+    ? Math.round(((course.original_price - course.price) / course.original_price) * 100)
     : 0;
 
   return (
@@ -168,7 +175,7 @@ export default function Checkout() {
                 <div className="space-y-4">
                   <div className="flex gap-4">
                     <img
-                      src={course.thumbnail}
+                      src={course.thumbnail_url || "/placeholder.svg"}
                       alt={course.title}
                       className="w-20 h-14 object-cover rounded-lg"
                     />
@@ -184,11 +191,11 @@ export default function Checkout() {
                 </div>
                 
                 <div className="border-t border-border pt-4 space-y-3">
-                  {course.originalPrice && (
+                  {course.original_price && (
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">정가</span>
                       <span className="text-muted-foreground line-through">
-                        ₩{course.originalPrice.toLocaleString()}
+                        ₩{course.original_price.toLocaleString()}
                       </span>
                     </div>
                   )}
