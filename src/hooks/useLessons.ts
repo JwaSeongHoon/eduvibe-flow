@@ -1,6 +1,11 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+const isUuid = (value: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+
 export interface Lesson {
   id: string;
   course_id: string;
@@ -20,6 +25,14 @@ export function useLessons(courseId: string | undefined) {
 
   const fetchLessons = async () => {
     if (!courseId) {
+      setLoading(false);
+      return;
+    }
+
+    // Avoid REST 400 when the route param isn't a UUID (e.g. legacy mock id)
+    if (!isUuid(courseId)) {
+      setLessons([]);
+      setError("유효하지 않은 강좌 ID");
       setLoading(false);
       return;
     }
@@ -57,6 +70,13 @@ export function useLesson(lessonId: string | undefined) {
   useEffect(() => {
     async function fetchLesson() {
       if (!lessonId) {
+        setLoading(false);
+        return;
+      }
+
+      if (!isUuid(lessonId)) {
+        setLesson(null);
+        setError("유효하지 않은 레슨 ID");
         setLoading(false);
         return;
       }

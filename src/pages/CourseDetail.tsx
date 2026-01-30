@@ -24,10 +24,10 @@ import {
   Loader2,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { mockCourses } from "@/data/mockData";
 import { useAuth } from "@/hooks/useAuth";
 import { useEnrollment } from "@/hooks/useEnrollment";
 import { useLessons } from "@/hooks/useLessons";
+import { useCourse } from "@/hooks/useCourses";
 
 const curriculum = [
   {
@@ -84,13 +84,32 @@ export default function CourseDetail() {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { course, loading: courseLoading } = useCourse(courseId);
   const { isEnrolled, loading: enrollmentLoading } = useEnrollment(courseId);
   const { lessons, loading: lessonsLoading } = useLessons(courseId);
-  const course = mockCourses.find((c) => c.id === courseId) || mockCourses[0];
   const [activeTab, setActiveTab] = useState<"curriculum" | "reviews">("curriculum");
 
-  const discount = course.originalPrice
-    ? Math.round(((course.originalPrice - course.price) / course.originalPrice) * 100)
+  if (courseLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!course) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="container pt-24 pb-12">
+          <p className="text-muted-foreground">강좌를 찾을 수 없습니다.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const discount = course.original_price
+    ? Math.round(((course.original_price - course.price) / course.original_price) * 100)
     : 0;
 
   const handleEnrollClick = () => {
@@ -135,11 +154,9 @@ export default function CourseDetail() {
                 animate={{ opacity: 1, y: 0 }}
               >
                 <div className="flex gap-2 mb-4">
-                  {course.badges?.map((badge) => (
-                    <Badge key={badge} variant="secondary" className="bg-primary/10 text-primary">
-                      {badge}
-                    </Badge>
-                  ))}
+                  <Badge variant="secondary" className="bg-primary/10 text-primary">
+                    {course.category}
+                  </Badge>
                 </div>
 
                 <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
@@ -147,23 +164,23 @@ export default function CourseDetail() {
                 </h1>
 
                 <p className="text-lg text-muted-foreground mb-6">
-                  실무에서 바로 활용 가능한 핵심 스킬을 마스터하세요. 
-                  초보자도 따라할 수 있는 친절한 설명과 다양한 실습 예제를 제공합니다.
+                  {course.description ||
+                    "실무에서 바로 활용 가능한 핵심 스킬을 마스터하세요. 초보자도 따라할 수 있는 친절한 설명과 다양한 실습 예제를 제공합니다."}
                 </p>
 
                 <div className="flex flex-wrap items-center gap-6 text-sm">
                   <div className="flex items-center gap-2">
                     <Star className="w-5 h-5 text-warning fill-warning" />
-                    <span className="font-semibold text-foreground">{course.rating}</span>
-                    <span className="text-muted-foreground">({course.reviewCount}개 수강평)</span>
+                    <span className="font-semibold text-foreground">4.9</span>
+                    <span className="text-muted-foreground">(0개 수강평)</span>
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Users className="w-5 h-5" />
-                    <span>{(course.reviewCount * 3).toLocaleString()}명 수강중</span>
+                    <span>0명 수강중</span>
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Clock className="w-5 h-5" />
-                    <span>{course.duration}</span>
+                    <span>{course.duration || "-"}</span>
                   </div>
                 </div>
               </motion.div>
@@ -176,7 +193,7 @@ export default function CourseDetail() {
                 transition={{ delay: 0.1 }}
               >
                 <img
-                  src={course.thumbnail}
+                  src={course.thumbnail_url || "/placeholder.svg"}
                   alt={course.title}
                   className="w-full h-full object-cover"
                 />
@@ -224,9 +241,9 @@ export default function CourseDetail() {
                       ₩{course.price.toLocaleString()}
                     </span>
                   </div>
-                  {course.originalPrice && (
+                  {course.original_price && (
                     <p className="text-muted-foreground line-through">
-                      ₩{course.originalPrice.toLocaleString()}
+                      ₩{course.original_price.toLocaleString()}
                     </p>
                   )}
                 </div>
@@ -266,7 +283,7 @@ export default function CourseDetail() {
                 <div className="space-y-3 pt-4 border-t border-border">
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">
                     <Clock className="w-4 h-4" />
-                    <span>총 {course.duration} 분량</span>
+                    <span>총 {course.duration || "-"} 분량</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">
                     <FileText className="w-4 h-4" />
