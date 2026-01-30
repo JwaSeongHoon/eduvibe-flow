@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -33,6 +33,7 @@ import { useEnrollment } from "@/hooks/useEnrollment";
 import { useCourse } from "@/hooks/useCourses";
 import { useLessons, Lesson, getSignedVideoUrl } from "@/hooks/useLessons";
 import { Card, CardContent } from "@/components/ui/card";
+import { mockCourses, mockLessons } from "@/data/mockData";
 
 const materials = [
   { name: "강의자료.pdf", size: "2.4 MB" },
@@ -40,13 +41,22 @@ const materials = [
   { name: "참고자료.pdf", size: "1.1 MB" },
 ];
 
+// Type for combined lesson (DB or mock)
+interface DisplayLesson {
+  id: string;
+  title: string;
+  duration: string | null;
+  is_preview: boolean;
+  video_url?: string | null;
+}
+
 export default function LearningPlayer() {
   const { courseId, lessonId } = useParams();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { isEnrolled, loading: enrollmentLoading } = useEnrollment(courseId);
-  const { course, loading: courseLoading } = useCourse(courseId);
-  const { lessons, loading: lessonsLoading } = useLessons(courseId);
+  const { course: dbCourse, loading: courseLoading } = useCourse(courseId);
+  const { lessons: dbLessons, loading: lessonsLoading } = useLessons(courseId);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -57,11 +67,42 @@ export default function LearningPlayer() {
   const [videoLoading, setVideoLoading] = useState(false);
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
 
+  // Use mock data if DB data not available
+  const mockCourse = mockCourses.find((c) => c.id === courseId);
+  const course = dbCourse || (mockCourse ? {
+    id: mockCourse.id,
+    title: mockCourse.title,
+    thumbnail_url: mockCourse.thumbnail,
+    instructor: mockCourse.instructor,
+  } : null);
+
+  // Combine DB lessons with mock lessons
+  const lessons: DisplayLesson[] = useMemo(() => {
+    if (dbLessons.length > 0) {
+      return dbLessons.map(l => ({
+        id: l.id,
+        title: l.title,
+        duration: l.duration,
+        is_preview: l.is_preview,
+        video_url: l.video_url,
+      }));
+    }
+    // Fall back to mock lessons
+    const mocks = mockLessons[courseId || ""] || [];
+    return mocks.map(l => ({
+      id: l.id,
+      title: l.title,
+      duration: l.duration,
+      is_preview: l.is_preview,
+      video_url: null,
+    }));
+  }, [dbLessons, courseId]);
+
   // Find current lesson - if no lessonId provided, use first lesson
   const currentLessonIndex = lessonId 
     ? lessons.findIndex((l) => l.id === lessonId)
     : 0;
-  const currentLesson = lessons[currentLessonIndex] || lessons[0];
+  const currentLesson = lessons[currentLessonIndex >= 0 ? currentLessonIndex : 0] || lessons[0];
   const prevLesson = lessons[currentLessonIndex - 1];
   const nextLesson = lessons[currentLessonIndex + 1];
 
@@ -205,8 +246,8 @@ export default function LearningPlayer() {
       <div className="flex-1 flex overflow-hidden">
         {/* Main Content */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Video Player */}
-          <div className="relative bg-black aspect-video shrink-0">
+          {/* Video Player - max height 60vh for better proportions */}
+          <div className="relative bg-black w-full max-h-[60vh] aspect-video shrink-0">
             {videoLoading ? (
               <div className="absolute inset-0 flex items-center justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
