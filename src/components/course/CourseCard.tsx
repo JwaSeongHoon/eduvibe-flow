@@ -13,7 +13,7 @@ export interface CourseCardProps {
   duration: string;
   price: number;
   originalPrice?: number;
-  badges?: ("BEST" | "NEW" | "인기" | "AI PICK")[];
+  badges?: string[];
   progress?: number;
 }
 
@@ -22,6 +22,8 @@ const badgeStyles: Record<string, string> = {
   NEW: "bg-primary text-primary-foreground",
   인기: "bg-destructive text-destructive-foreground",
   "AI PICK": "bg-gradient-vibe text-primary-foreground",
+  DB: "bg-secondary text-secondary-foreground",
+  미공개: "bg-muted text-muted-foreground",
 };
 
 export function CourseCard({

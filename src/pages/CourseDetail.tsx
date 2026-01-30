@@ -86,7 +86,24 @@ export default function CourseDetail() {
   const { user, loading: authLoading } = useAuth();
   const { isEnrolled, loading: enrollmentLoading } = useEnrollment(courseId);
   const { lessons, loading: lessonsLoading } = useLessons(courseId);
-  const course = mockCourses.find((c) => c.id === courseId) || mockCourses[0];
+  
+  // Try to find mock course first, otherwise use DB data
+  const mockCourse = mockCourses.find((c) => c.id === courseId);
+  
+  // Create a course-like object from mock data for display
+  const course = mockCourse || {
+    id: courseId || "",
+    title: "강좌를 불러오는 중...",
+    instructor: "",
+    thumbnail: "/placeholder.svg",
+    rating: 0,
+    reviewCount: 0,
+    duration: "",
+    price: 0,
+    originalPrice: undefined,
+    badges: [],
+  };
+  
   const [activeTab, setActiveTab] = useState<"curriculum" | "reviews">("curriculum");
 
   const discount = course.originalPrice

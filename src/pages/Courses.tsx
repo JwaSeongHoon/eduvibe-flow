@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Header } from "@/components/layout/Header";
 import { AITutorButton } from "@/components/ai/AITutorButton";
-import { CourseCard } from "@/components/course/CourseCard";
+import { CourseCard, CourseCardProps } from "@/components/course/CourseCard";
 import { CategoryTabs } from "@/components/course/CategoryTabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -15,12 +15,38 @@ import {
 import { Search, SlidersHorizontal } from "lucide-react";
 import { motion } from "framer-motion";
 import { mockCourses, categories } from "@/data/mockData";
+import { useCourses } from "@/hooks/useCourses";
 
 export default function Courses() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("popular");
+  const { courses: dbCourses, loading } = useCourses();
 
-  const filteredCourses = mockCourses.filter((course) =>
+  // Combine DB courses with mock courses (DB courses first)
+  const allCourses: CourseCardProps[] = useMemo(() => {
+    const dbCourseCards: CourseCardProps[] = dbCourses.map((c) => ({
+      id: c.id,
+      title: c.title,
+      instructor: c.instructor,
+      thumbnail: c.thumbnail_url || "https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=600&h=340&fit=crop",
+      rating: 4.8,
+      reviewCount: 100,
+      duration: c.duration || "10시간",
+      price: c.price,
+      originalPrice: c.original_price || undefined,
+      badges: c.is_published ? ["DB"] : ["미공개"],
+    }));
+    
+    // Filter out mock courses that might have same title as DB courses
+    const dbTitles = new Set(dbCourses.map((c) => c.title.toLowerCase()));
+    const filteredMocks = mockCourses.filter(
+      (m) => !dbTitles.has(m.title.toLowerCase())
+    );
+    
+    return [...dbCourseCards, ...filteredMocks];
+  }, [dbCourses]);
+
+  const filteredCourses = allCourses.filter((course) =>
     course.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
