@@ -96,10 +96,31 @@ serve(async (req) => {
     });
 
     // Supabase 클라이언트 생성 (사용자 인증 정보 포함)
+    // Edge Runtime에서는 보통 SUPABASE_ANON_KEY가 제공됩니다.
     const authHeader = req.headers.get("Authorization");
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!;
-    
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseKey =
+      Deno.env.get("SUPABASE_ANON_KEY") ??
+      Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ??
+      "";
+
+    if (!supabaseUrl || !supabaseKey) {
+      console.error("Supabase 환경변수가 설정되지 않음", {
+        hasUrl: Boolean(supabaseUrl),
+        hasKey: Boolean(supabaseKey),
+      });
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: "서버 설정 오류가 발생했습니다.",
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
     const supabase = createClient(supabaseUrl, supabaseKey, {
       global: {
         headers: authHeader ? { Authorization: authHeader } : {},
