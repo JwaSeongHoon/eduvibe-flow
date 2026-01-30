@@ -20,10 +20,13 @@ import {
   CheckCircle,
   Lock,
   ChevronLeft,
+  BookOpen,
+  Loader2,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { mockCourses } from "@/data/mockData";
 import { useAuth } from "@/hooks/useAuth";
+import { useEnrollment } from "@/hooks/useEnrollment";
 
 const curriculum = [
   {
@@ -79,7 +82,8 @@ const reviews = [
 export default function CourseDetail() {
   const { courseId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const { isEnrolled, loading: enrollmentLoading } = useEnrollment(courseId);
   const course = mockCourses.find((c) => c.id === courseId) || mockCourses[0];
   const [activeTab, setActiveTab] = useState<"curriculum" | "reviews">("curriculum");
 
@@ -88,11 +92,19 @@ export default function CourseDetail() {
     : 0;
 
   const handleEnrollClick = () => {
-    if (user) {
-      navigate(`/checkout/${course.id}`);
-    } else {
+    // 로그인이 안됨 -> 결제 페이지 이동 (로그인 페이지 거쳐서)
+    if (!user) {
       navigate(`/auth?redirect=/checkout/${course.id}`);
+      return;
     }
+    // 로그인이 됨 && 본인 수강 강의가 아님 -> 결제 페이지 이동
+    if (!isEnrolled) {
+      navigate(`/checkout/${course.id}`);
+    }
+  };
+
+  const handleStartLearning = () => {
+    navigate(`/learn/${course.id}/1-1`);
   };
 
   return (
@@ -212,15 +224,35 @@ export default function CourseDetail() {
                 </div>
 
                 <div className="space-y-3">
-                  <Button 
-                    className="w-full gradient-vibe text-primary-foreground glow-primary text-lg h-12"
-                    onClick={handleEnrollClick}
-                  >
-                    수강 신청하기
-                  </Button>
-                  <Button variant="outline" className="w-full border-border h-12">
-                    위시리스트에 추가
-                  </Button>
+                  {authLoading || enrollmentLoading ? (
+                    <Button 
+                      className="w-full gradient-vibe text-primary-foreground glow-primary text-lg h-12"
+                      disabled
+                    >
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      로딩 중...
+                    </Button>
+                  ) : isEnrolled ? (
+                    <Button 
+                      className="w-full gradient-vibe text-primary-foreground glow-primary text-lg h-12"
+                      onClick={handleStartLearning}
+                    >
+                      <BookOpen className="w-5 h-5 mr-2" />
+                      학습하기
+                    </Button>
+                  ) : (
+                    <Button 
+                      className="w-full gradient-vibe text-primary-foreground glow-primary text-lg h-12"
+                      onClick={handleEnrollClick}
+                    >
+                      수강 신청하기
+                    </Button>
+                  )}
+                  {!isEnrolled && (
+                    <Button variant="outline" className="w-full border-border h-12">
+                      위시리스트에 추가
+                    </Button>
+                  )}
                 </div>
 
                 <div className="space-y-3 pt-4 border-t border-border">
