@@ -19,7 +19,7 @@ serve(async (req) => {
     console.log("결제 승인 요청:", { paymentKey, orderId, amount, courseId });
 
     // 필수 파라미터 검증
-    if (!paymentKey || !orderId || !amount) {
+    if (!paymentKey || !orderId || !amount || !courseId) {
       console.error("필수 파라미터 누락");
       return new Response(
         JSON.stringify({
@@ -96,7 +96,6 @@ serve(async (req) => {
     });
 
     // Supabase 클라이언트 생성 (사용자 인증 정보 포함)
-    // Edge Runtime에서는 보통 SUPABASE_ANON_KEY가 제공됩니다.
     const authHeader = req.headers.get("Authorization");
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseKey =
@@ -130,10 +129,69 @@ serve(async (req) => {
     // 사용자 정보 가져오기
     const {
       data: { user },
+      error: userError,
     } = await supabase.auth.getUser();
 
-    // 결제 정보를 로그로 저장 (추후 orders 테이블 생성 시 활용)
-    console.log("결제 완료 - 사용자:", user?.id, "강의:", courseId);
+    if (userError || !user) {
+      console.error("사용자 인증 실패:", userError);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: "로그인이 필요합니다.",
+        }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    // 결제 정보를 enrollments 테이블에 저장
+    console.log("결제 정보 저장 시작 - 사용자:", user.id, "강의:", courseId);
+
+    const { data: enrollmentData, error: enrollmentError } = await supabase
+      .from("enrollments")
+      .insert({
+        user_id: user.id,
+        course_id: courseId,
+        payment_key: confirmResult.paymentKey,
+        order_id: confirmResult.orderId,
+        amount: confirmResult.totalAmount,
+        payment_method: confirmResult.method,
+        status: "completed",
+        approved_at: confirmResult.approvedAt,
+      })
+      .select()
+      .single();
+
+    if (enrollmentError) {
+      console.error("결제 정보 저장 실패:", enrollmentError);
+      // 이미 수강중인 강의인 경우 (unique constraint violation)
+      if (enrollmentError.code === "23505") {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            message: "이미 수강 중인 강의입니다.",
+          }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: "결제 정보 저장에 실패했습니다.",
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+
+    console.log("결제 정보 저장 완료:", enrollmentData);
 
     return new Response(
       JSON.stringify({
@@ -146,6 +204,7 @@ serve(async (req) => {
           totalAmount: confirmResult.totalAmount,
           approvedAt: confirmResult.approvedAt,
         },
+        enrollment: enrollmentData,
       }),
       {
         status: 200,
