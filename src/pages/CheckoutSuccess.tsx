@@ -5,7 +5,17 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { CheckCircle, Loader2, XCircle, BookOpen, Home } from "lucide-react";
 import { motion } from "framer-motion";
-import { mockCourses } from "@/data/mockData";
+
+interface CourseInfo {
+  id: string;
+  title: string;
+  instructor: string;
+  thumbnail_url: string | null;
+}
+
+interface LessonInfo {
+  id: string;
+}
 
 export default function CheckoutSuccess() {
   const [searchParams] = useSearchParams();
@@ -13,24 +23,52 @@ export default function CheckoutSuccess() {
   
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [errorMessage, setErrorMessage] = useState("");
+  const [course, setCourse] = useState<CourseInfo | null>(null);
+  const [firstLessonId, setFirstLessonId] = useState<string | null>(null);
   
   const paymentKey = searchParams.get("paymentKey");
   const orderId = searchParams.get("orderId");
   const amount = searchParams.get("amount");
   const courseId = searchParams.get("courseId");
-  
-  const course = mockCourses.find((c) => c.id === courseId) || mockCourses[0];
 
   useEffect(() => {
     async function confirmPayment() {
-      if (!paymentKey || !orderId || !amount) {
+      if (!paymentKey || !orderId || !amount || !courseId) {
         setStatus("error");
         setErrorMessage("결제 정보가 올바르지 않습니다.");
         return;
       }
 
       try {
-        // Edge Function 호출하여 결제 승인
+        // 1. 강좌 정보 가져오기
+        const { data: courseData, error: courseError } = await supabase
+          .from("courses")
+          .select("id, title, instructor, thumbnail_url")
+          .eq("id", courseId)
+          .single();
+
+        if (courseError) {
+          console.error("강좌 정보 조회 실패:", courseError);
+        } else {
+          setCourse(courseData as CourseInfo);
+        }
+
+        // 2. 첫 번째 레슨 ID 가져오기
+        const { data: lessonData, error: lessonError } = await supabase
+          .from("lessons")
+          .select("id")
+          .eq("course_id", courseId)
+          .order("order_index", { ascending: true })
+          .limit(1)
+          .single();
+
+        if (lessonError) {
+          console.error("레슨 정보 조회 실패:", lessonError);
+        } else {
+          setFirstLessonId((lessonData as LessonInfo).id);
+        }
+
+        // 3. Edge Function 호출하여 결제 승인
         const { data, error } = await supabase.functions.invoke("confirm-payment", {
           body: {
             paymentKey,
@@ -102,29 +140,31 @@ export default function CheckoutSuccess() {
                   결제가 완료되었습니다!
                 </h1>
                 <p className="text-muted-foreground mb-6">
-                  {course.title} 강의를 수강하실 수 있습니다.
+                  {course?.title || "강의"}를 수강하실 수 있습니다.
                 </p>
                 
-                <div className="bg-secondary/50 rounded-lg p-4 mb-6 text-left">
-                  <div className="flex gap-4">
-                    <img
-                      src={course.thumbnail}
-                      alt={course.title}
-                      className="w-20 h-14 object-cover rounded-lg"
-                    />
-                    <div>
-                      <h3 className="font-medium text-foreground text-sm">
-                        {course.title}
-                      </h3>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {course.instructor}
-                      </p>
+                {course && (
+                  <div className="bg-secondary/50 rounded-lg p-4 mb-6 text-left">
+                    <div className="flex gap-4">
+                      <img
+                        src={course.thumbnail_url || "/placeholder.svg"}
+                        alt={course.title}
+                        className="w-20 h-14 object-cover rounded-lg"
+                      />
+                      <div>
+                        <h3 className="font-medium text-foreground text-sm">
+                          {course.title}
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {course.instructor}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
                 
                 <div className="space-y-3">
-                  <Link to={`/learn/${course.id}/1-1`}>
+                  <Link to={firstLessonId ? `/learn/${courseId}/${firstLessonId}` : `/learn/${courseId}`}>
                     <Button className="w-full gradient-vibe text-primary-foreground glow-primary">
                       <BookOpen className="w-4 h-4 mr-2" />
                       지금 바로 학습하기
@@ -158,12 +198,12 @@ export default function CheckoutSuccess() {
                 </p>
                 
                 <div className="space-y-3">
-                  <Link to={`/checkout/${course.id}`}>
+                  <Link to={`/checkout/${courseId}`}>
                     <Button className="w-full gradient-vibe text-primary-foreground">
                       다시 시도하기
                     </Button>
                   </Link>
-                  <Link to={`/courses/${course.id}`}>
+                  <Link to={`/courses/${courseId}`}>
                     <Button variant="outline" className="w-full">
                       강의 페이지로 돌아가기
                     </Button>
