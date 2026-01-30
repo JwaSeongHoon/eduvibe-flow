@@ -1,6 +1,5 @@
-import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { Header } from "@/components/layout/Header";
+import { useState, useEffect, useRef } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,37 +22,17 @@ import {
   Sparkles,
   Bookmark,
   Clock,
+  Lock,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { mockCourses } from "@/data/mockData";
-
-const curriculum = [
-  {
-    title: "섹션 1: 시작하기",
-    lessons: [
-      { id: "1-1", title: "강의 소개 및 학습 목표", duration: "5:30", completed: true },
-      { id: "1-2", title: "개발 환경 설정", duration: "12:45", completed: true },
-      { id: "1-3", title: "첫 번째 프로젝트 만들기", duration: "18:20", completed: false },
-    ],
-  },
-  {
-    title: "섹션 2: 핵심 개념",
-    lessons: [
-      { id: "2-1", title: "컴포넌트 기초", duration: "25:00", completed: false },
-      { id: "2-2", title: "상태 관리의 이해", duration: "30:15", completed: false },
-      { id: "2-3", title: "이벤트 핸들링", duration: "22:40", completed: false },
-    ],
-  },
-  {
-    title: "섹션 3: 고급 기법",
-    lessons: [
-      { id: "3-1", title: "커스텀 훅 만들기", duration: "28:30", completed: false },
-      { id: "3-2", title: "성능 최적화", duration: "35:00", completed: false },
-      { id: "3-3", title: "테스트 작성", duration: "40:20", completed: false },
-    ],
-  },
-];
+import { useAuth } from "@/hooks/useAuth";
+import { useEnrollment } from "@/hooks/useEnrollment";
+import { useCourse } from "@/hooks/useCourses";
+import { useLessons, Lesson, getSignedVideoUrl } from "@/hooks/useLessons";
+import { Card, CardContent } from "@/components/ui/card";
 
 const materials = [
   { name: "강의자료.pdf", size: "2.4 MB" },
@@ -63,22 +42,132 @@ const materials = [
 
 export default function LearningPlayer() {
   const { courseId, lessonId } = useParams();
+  const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
+  const { isEnrolled, loading: enrollmentLoading } = useEnrollment(courseId);
+  const { course, loading: courseLoading } = useCourse(courseId);
+  const { lessons, loading: lessonsLoading } = useLessons(courseId);
+
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [notes, setNotes] = useState("");
-  const [progress, setProgress] = useState(35);
+  const [progress, setProgress] = useState(0);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoLoading, setVideoLoading] = useState(false);
+  const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
 
-  const course = mockCourses.find((c) => c.id === courseId) || mockCourses[0];
-  
-  const allLessons = curriculum.flatMap((section) => section.lessons);
-  const currentLessonIndex = allLessons.findIndex((l) => l.id === lessonId);
-  const currentLesson = allLessons[currentLessonIndex] || allLessons[0];
-  const prevLesson = allLessons[currentLessonIndex - 1];
-  const nextLesson = allLessons[currentLessonIndex + 1];
+  // Find current lesson
+  const currentLessonIndex = lessons.findIndex((l) => l.id === lessonId);
+  const currentLesson = lessons[currentLessonIndex] || lessons[0];
+  const prevLesson = lessons[currentLessonIndex - 1];
+  const nextLesson = lessons[currentLessonIndex + 1];
 
-  const totalLessons = allLessons.length;
-  const completedLessons = allLessons.filter((l) => l.completed).length;
-  const courseProgress = Math.round((completedLessons / totalLessons) * 100);
+  const totalLessons = lessons.length;
+  const completedCount = completedLessons.size;
+  const courseProgress = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
+
+  // Load video URL when lesson changes
+  useEffect(() => {
+    async function loadVideo() {
+      if (!currentLesson?.video_url || !isEnrolled) return;
+
+      setVideoLoading(true);
+      try {
+        const signedUrl = await getSignedVideoUrl(currentLesson.video_url);
+        setVideoUrl(signedUrl);
+      } catch (error) {
+        console.error("영상 로딩 실패:", error);
+        setVideoUrl(null);
+      } finally {
+        setVideoLoading(false);
+      }
+    }
+
+    loadVideo();
+  }, [currentLesson, isEnrolled]);
+
+  // Handle video playback
+  const togglePlay = () => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (videoRef.current) {
+      const percent = (videoRef.current.currentTime / videoRef.current.duration) * 100;
+      setProgress(percent);
+    }
+  };
+
+  const handleVideoEnded = () => {
+    setIsPlaying(false);
+    if (currentLesson) {
+      setCompletedLessons((prev) => new Set(prev).add(currentLesson.id));
+    }
+  };
+
+  // Loading state
+  const isLoading = authLoading || enrollmentLoading || courseLoading || lessonsLoading;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Not authenticated
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="pt-6 text-center">
+            <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-xl font-bold mb-2">로그인이 필요합니다</h2>
+            <p className="text-muted-foreground mb-6">
+              강의를 시청하려면 먼저 로그인해주세요.
+            </p>
+            <Button onClick={() => navigate(`/auth?redirect=/learn/${courseId}/${lessonId}`)}>
+              로그인하기
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Not enrolled - access denied
+  if (!isEnrolled) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="pt-6 text-center">
+            <Lock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h2 className="text-xl font-bold mb-2">결제가 필요한 강의입니다</h2>
+            <p className="text-muted-foreground mb-6">
+              이 강의를 시청하려면 수강 신청이 필요합니다.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <Button variant="outline" onClick={() => navigate(`/courses/${courseId}`)}>
+                강의 소개
+              </Button>
+              <Button onClick={() => navigate(`/checkout/${courseId}`)}>
+                수강 신청하기
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -89,8 +178,10 @@ export default function LearningPlayer() {
             <ChevronLeft className="w-5 h-5" />
           </Link>
           <div>
-            <p className="text-sm text-muted-foreground line-clamp-1">{course.title}</p>
-            <p className="text-sm font-medium text-foreground line-clamp-1">{currentLesson.title}</p>
+            <p className="text-sm text-muted-foreground line-clamp-1">{course?.title}</p>
+            <p className="text-sm font-medium text-foreground line-clamp-1">
+              {currentLesson?.title || "레슨 없음"}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-4">
@@ -114,25 +205,51 @@ export default function LearningPlayer() {
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Video Player */}
           <div className="relative bg-black aspect-video shrink-0">
-            <img
-              src={course.thumbnail}
-              alt={currentLesson.title}
-              className="w-full h-full object-cover opacity-50"
-            />
+            {videoLoading ? (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              </div>
+            ) : videoUrl ? (
+              <video
+                ref={videoRef}
+                src={videoUrl}
+                className="w-full h-full object-contain"
+                onTimeUpdate={handleTimeUpdate}
+                onEnded={handleVideoEnded}
+                onPlay={() => setIsPlaying(true)}
+                onPause={() => setIsPlaying(false)}
+              />
+            ) : (
+              <>
+                <img
+                  src={course?.thumbnail_url || "/placeholder.svg"}
+                  alt={currentLesson?.title}
+                  className="w-full h-full object-cover opacity-50"
+                />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-center text-foreground">
+                    <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>영상을 불러올 수 없습니다</p>
+                  </div>
+                </div>
+              </>
+            )}
             
             {/* Play button overlay */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <button
-                className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center hover:bg-primary/30 transition-colors"
-                onClick={() => setIsPlaying(!isPlaying)}
-              >
-                {isPlaying ? (
-                  <Pause className="w-8 h-8 text-primary" />
-                ) : (
-                  <Play className="w-8 h-8 text-primary ml-1" />
-                )}
-              </button>
-            </div>
+            {videoUrl && !videoLoading && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <button
+                  className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center hover:bg-primary/30 transition-colors"
+                  onClick={togglePlay}
+                >
+                  {isPlaying ? (
+                    <Pause className="w-8 h-8 text-primary" />
+                  ) : (
+                    <Play className="w-8 h-8 text-primary ml-1" />
+                  )}
+                </button>
+              </div>
+            )}
 
             {/* Video Controls */}
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
@@ -140,7 +257,7 @@ export default function LearningPlayer() {
               <div className="mb-3">
                 <div className="h-1 bg-muted rounded-full cursor-pointer group">
                   <div
-                    className="h-full gradient-vibe rounded-full relative transition-all"
+                    className="h-full bg-primary rounded-full relative transition-all"
                     style={{ width: `${progress}%` }}
                   >
                     <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-primary opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -150,7 +267,7 @@ export default function LearningPlayer() {
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <button onClick={() => setIsPlaying(!isPlaying)}>
+                  <button onClick={togglePlay}>
                     {isPlaying ? (
                       <Pause className="w-5 h-5 text-foreground" />
                     ) : (
@@ -167,7 +284,7 @@ export default function LearningPlayer() {
                     <Volume2 className="w-5 h-5 text-foreground" />
                   </button>
                   <span className="text-sm text-foreground ml-2">
-                    2:15 / {currentLesson.duration}
+                    {currentLesson?.duration || "0:00"}
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
@@ -281,7 +398,7 @@ export default function LearningPlayer() {
             ) : (
               <div />
             )}
-            <Button className="gradient-vibe text-primary-foreground">
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
               완료하고 다음 강의
             </Button>
             {nextLesson ? (
@@ -306,51 +423,52 @@ export default function LearningPlayer() {
               exit={{ width: 0, opacity: 0 }}
               className="border-l border-border bg-card overflow-hidden shrink-0"
             >
-              <div className="w-80 h-full overflow-y-auto scrollbar-custom">
+              <div className="w-80 h-full overflow-y-auto">
                 <div className="p-4 border-b border-border">
                   <h3 className="font-semibold text-foreground">커리큘럼</h3>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {completedLessons}/{totalLessons} 완료
+                    {completedCount}/{totalLessons} 완료
                   </p>
                 </div>
 
                 <div className="p-2">
-                  {curriculum.map((section, sectionIndex) => (
-                    <div key={sectionIndex} className="mb-4">
-                      <p className="px-3 py-2 text-sm font-medium text-muted-foreground">
-                        {section.title}
-                      </p>
-                      <div className="space-y-1">
-                        {section.lessons.map((lesson) => (
-                          <Link
-                            key={lesson.id}
-                            to={`/learn/${courseId}/${lesson.id}`}
+                  {lessons.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">
+                      등록된 레슨이 없습니다.
+                    </p>
+                  ) : (
+                    <div className="space-y-1">
+                      {lessons.map((lesson, index) => (
+                        <Link
+                          key={lesson.id}
+                          to={`/learn/${courseId}/${lesson.id}`}
+                        >
+                          <div
+                            className={cn(
+                              "flex items-center gap-3 p-3 rounded-lg transition-colors",
+                              lesson.id === lessonId
+                                ? "bg-primary/10 text-primary"
+                                : "hover:bg-secondary text-foreground"
+                            )}
                           >
-                            <div
-                              className={cn(
-                                "flex items-center gap-3 p-3 rounded-lg transition-colors",
-                                lesson.id === lessonId
-                                  ? "bg-primary/10 text-primary"
-                                  : "hover:bg-secondary text-foreground"
-                              )}
-                            >
-                              {lesson.completed ? (
-                                <CheckCircle className="w-5 h-5 text-success shrink-0" />
-                              ) : (
-                                <Circle className="w-5 h-5 text-muted-foreground shrink-0" />
-                              )}
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm truncate">{lesson.title}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {lesson.duration}
-                                </p>
-                              </div>
+                            {completedLessons.has(lesson.id) ? (
+                              <CheckCircle className="w-5 h-5 text-green-500 shrink-0" />
+                            ) : (
+                              <Circle className="w-5 h-5 text-muted-foreground shrink-0" />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm truncate">
+                                {index + 1}. {lesson.title}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {lesson.duration || "0:00"}
+                              </p>
                             </div>
-                          </Link>
-                        ))}
-                      </div>
+                          </div>
+                        </Link>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             </motion.aside>
