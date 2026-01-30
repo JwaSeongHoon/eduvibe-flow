@@ -57,8 +57,10 @@ export default function LearningPlayer() {
   const [videoLoading, setVideoLoading] = useState(false);
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set());
 
-  // Find current lesson
-  const currentLessonIndex = lessons.findIndex((l) => l.id === lessonId);
+  // Find current lesson - if no lessonId provided, use first lesson
+  const currentLessonIndex = lessonId 
+    ? lessons.findIndex((l) => l.id === lessonId)
+    : 0;
   const currentLesson = lessons[currentLessonIndex] || lessons[0];
   const prevLesson = lessons[currentLessonIndex - 1];
   const nextLesson = lessons[currentLessonIndex + 1];
