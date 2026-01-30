@@ -13,12 +13,13 @@ import {
   TrendingUp,
   Play,
   LogIn,
+  Loader2,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { myCourses } from "@/data/mockData";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useMyEnrollments } from "@/hooks/useMyEnrollments";
 
 const weeklyStats = [
   { day: "월", hours: 2 },
@@ -38,20 +39,22 @@ const achievements = [
 
 export default function Dashboard() {
   const [date, setDate] = useState<Date | undefined>(new Date());
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const { enrolledCourses, loading: enrollmentsLoading } = useMyEnrollments();
   const maxHours = Math.max(...weeklyStats.map((d) => d.hours));
 
   const totalHours = weeklyStats.reduce((sum, d) => sum + d.hours, 0);
   const streak = 7;
-  const completedCourses = 3;
+  const completedCourses = 0;
+  const loading = authLoading || enrollmentsLoading;
 
   // Show loading state
-  if (loading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
         <main className="container pt-24 pb-12 flex items-center justify-center">
-          <div className="text-muted-foreground">로딩 중...</div>
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </main>
       </div>
     );
@@ -111,7 +114,7 @@ export default function Dashboard() {
           {[
             { icon: Clock, label: "이번 주 학습", value: `${totalHours}시간`, color: "text-primary" },
             { icon: Flame, label: "연속 학습", value: `${streak}일`, color: "text-accent" },
-            { icon: BookOpen, label: "수강 중", value: `${myCourses.length}개`, color: "text-info" },
+            { icon: BookOpen, label: "수강 중", value: `${enrolledCourses.length}개`, color: "text-info" },
             { icon: Trophy, label: "완료 강의", value: `${completedCourses}개`, color: "text-success" },
           ].map((stat, index) => (
             <motion.div
@@ -152,15 +155,21 @@ export default function Dashboard() {
                 </h2>
               </div>
 
-              {myCourses.length > 0 && (
-                <Link to={`/learn/${myCourses[0].id}/1-1`}>
+              {enrollmentsLoading ? (
+                <Card className="bg-card border-border">
+                  <CardContent className="p-8 flex items-center justify-center">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                  </CardContent>
+                </Card>
+              ) : enrolledCourses.length > 0 ? (
+                <Link to={`/learn/${enrolledCourses[0].id}/1-1`}>
                   <Card className="bg-card border-border hover:border-primary/50 transition-colors cursor-pointer">
                     <CardContent className="p-0">
                       <div className="flex flex-col md:flex-row">
                         <div className="relative w-full md:w-64 aspect-video md:aspect-auto shrink-0">
                           <img
-                            src={myCourses[0].thumbnail}
-                            alt={myCourses[0].title}
+                            src={enrolledCourses[0].thumbnail}
+                            alt={enrolledCourses[0].title}
                             className="w-full h-full object-cover rounded-t-lg md:rounded-l-lg md:rounded-tr-none"
                           />
                           <div className="absolute inset-0 bg-background/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
@@ -171,25 +180,35 @@ export default function Dashboard() {
                         </div>
                         <div className="flex-1 p-4">
                           <h3 className="font-semibold text-foreground mb-2">
-                            {myCourses[0].title}
+                            {enrolledCourses[0].title}
                           </h3>
                           <p className="text-sm text-muted-foreground mb-4">
-                            {myCourses[0].instructor}
+                            {enrolledCourses[0].instructor}
                           </p>
                           <div className="space-y-2">
                             <div className="flex items-center justify-between text-sm">
                               <span className="text-muted-foreground">진도율</span>
                               <span className="text-primary font-medium">
-                                {myCourses[0].progress}%
+                                {enrolledCourses[0].progress}%
                               </span>
                             </div>
-                            <Progress value={myCourses[0].progress} className="h-2" />
+                            <Progress value={enrolledCourses[0].progress} className="h-2" />
                           </div>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
                 </Link>
+              ) : (
+                <Card className="bg-card border-border">
+                  <CardContent className="p-8 text-center">
+                    <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground mb-4">아직 수강 중인 강의가 없습니다</p>
+                    <Link to="/courses">
+                      <Button variant="outline">강의 둘러보기</Button>
+                    </Link>
+                  </CardContent>
+                </Card>
               )}
             </motion.section>
 
@@ -205,11 +224,23 @@ export default function Dashboard() {
                 </h2>
               </div>
 
-              <div className="grid sm:grid-cols-2 gap-4">
-                {myCourses.map((course) => (
-                  <CourseCard key={course.id} {...course} />
-                ))}
-              </div>
+              {enrollmentsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : enrolledCourses.length > 0 ? (
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {enrolledCourses.map((course) => (
+                    <CourseCard key={course.id} {...course} />
+                  ))}
+                </div>
+              ) : (
+                <Card className="bg-card border-border">
+                  <CardContent className="p-8 text-center">
+                    <p className="text-muted-foreground">수강 중인 강의가 없습니다</p>
+                  </CardContent>
+                </Card>
+              )}
             </motion.section>
 
             {/* Weekly Stats */}
