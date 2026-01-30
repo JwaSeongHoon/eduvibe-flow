@@ -12,18 +12,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, SlidersHorizontal } from "lucide-react";
+import { Search, SlidersHorizontal, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
-import { mockCourses, categories } from "@/data/mockData";
+import { categories } from "@/data/mockData";
+import { useCourses } from "@/hooks/useCourses";
 
 export default function Courses() {
+  const { courses, loading } = useCourses();
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("popular");
 
-  const filteredCourses = mockCourses.filter((course) =>
-    course.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
+  // 공개된 강좌만 필터링 + 검색
+  const filteredCourses = courses
+    .filter((course) => course.is_published)
+    .filter((course) =>
+      course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      course.instructor.toLowerCase().includes(searchQuery.toLowerCase())
+    );
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -88,20 +93,36 @@ export default function Courses() {
         </motion.div>
 
         {/* Course Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredCourses.map((course, index) => (
-            <motion.div
-              key={course.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 + index * 0.05 }}
-            >
-              <CourseCard {...course} />
-            </motion.div>
-          ))}
-        </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredCourses.map((course, index) => (
+              <motion.div
+                key={course.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 + index * 0.05 }}
+              >
+                <CourseCard
+                  id={course.id}
+                  title={course.title}
+                  instructor={course.instructor}
+                  thumbnail={course.thumbnail_url || "/placeholder.svg"}
+                  rating={4.5}
+                  reviewCount={0}
+                  duration={course.duration || ""}
+                  price={course.price}
+                  originalPrice={course.original_price || undefined}
+                />
+              </motion.div>
+            ))}
+          </div>
+        )}
 
-        {filteredCourses.length === 0 && (
+        {!loading && filteredCourses.length === 0 && (
           <div className="text-center py-16">
             <p className="text-muted-foreground">검색 결과가 없습니다.</p>
           </div>
