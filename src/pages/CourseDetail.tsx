@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { AITutorButton } from "@/components/ai/AITutorButton";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { mockCourses } from "@/data/mockData";
+import { useAuth } from "@/hooks/useAuth";
 
 const curriculum = [
   {
@@ -77,12 +78,22 @@ const reviews = [
 
 export default function CourseDetail() {
   const { courseId } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const course = mockCourses.find((c) => c.id === courseId) || mockCourses[0];
   const [activeTab, setActiveTab] = useState<"curriculum" | "reviews">("curriculum");
 
   const discount = course.originalPrice
     ? Math.round(((course.originalPrice - course.price) / course.originalPrice) * 100)
     : 0;
+
+  const handleEnrollClick = () => {
+    if (user) {
+      navigate(`/checkout/${course.id}`);
+    } else {
+      navigate(`/auth?redirect=/checkout/${course.id}`);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -201,11 +212,12 @@ export default function CourseDetail() {
                 </div>
 
                 <div className="space-y-3">
-                  <Link to={`/learn/${course.id}/1-1`} className="block">
-                    <Button className="w-full gradient-vibe text-primary-foreground glow-primary text-lg h-12">
-                      수강 신청하기
-                    </Button>
-                  </Link>
+                  <Button 
+                    className="w-full gradient-vibe text-primary-foreground glow-primary text-lg h-12"
+                    onClick={handleEnrollClick}
+                  >
+                    수강 신청하기
+                  </Button>
                   <Button variant="outline" className="w-full border-border h-12">
                     위시리스트에 추가
                   </Button>

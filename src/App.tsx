@@ -11,6 +11,9 @@ import LearningPlayer from "./pages/LearningPlayer";
 import Dashboard from "./pages/Dashboard";
 import Community from "./pages/Community";
 import Auth from "./pages/Auth";
+import Checkout from "./pages/Checkout";
+import CheckoutSuccess from "./pages/CheckoutSuccess";
+import CheckoutFail from "./pages/CheckoutFail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +33,9 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/community" element={<Community />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/checkout/:courseId" element={<Checkout />} />
+            <Route path="/checkout/success" element={<CheckoutSuccess />} />
+            <Route path="/checkout/fail" element={<CheckoutFail />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
