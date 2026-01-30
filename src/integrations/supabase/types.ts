@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      enrollments: {
+        Row: {
+          amount: number
+          approved_at: string | null
+          course_id: string
+          created_at: string
+          id: string
+          order_id: string
+          payment_key: string
+          payment_method: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          approved_at?: string | null
+          course_id: string
+          created_at?: string
+          id?: string
+          order_id: string
+          payment_key: string
+          payment_method?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          approved_at?: string | null
+          course_id?: string
+          created_at?: string
+          id?: string
+          order_id?: string
+          payment_key?: string
+          payment_method?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
