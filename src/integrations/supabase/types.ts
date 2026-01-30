@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      courses: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          duration: string | null
+          id: string
+          instructor: string
+          is_published: boolean
+          original_price: number | null
+          price: number
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          duration?: string | null
+          id?: string
+          instructor: string
+          is_published?: boolean
+          original_price?: number | null
+          price?: number
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          duration?: string | null
+          id?: string
+          instructor?: string
+          is_published?: boolean
+          original_price?: number | null
+          price?: number
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       enrollments: {
         Row: {
           amount: number
@@ -56,6 +101,50 @@ export type Database = {
         }
         Relationships: []
       }
+      lessons: {
+        Row: {
+          course_id: string
+          created_at: string
+          duration: string | null
+          id: string
+          is_preview: boolean
+          order_index: number
+          title: string
+          updated_at: string
+          video_url: string | null
+        }
+        Insert: {
+          course_id: string
+          created_at?: string
+          duration?: string | null
+          id?: string
+          is_preview?: boolean
+          order_index?: number
+          title: string
+          updated_at?: string
+          video_url?: string | null
+        }
+        Update: {
+          course_id?: string
+          created_at?: string
+          duration?: string | null
+          id?: string
+          is_preview?: boolean
+          order_index?: number
+          title?: string
+          updated_at?: string
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lessons_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -91,7 +180,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_course_access: {
+        Args: { _course_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

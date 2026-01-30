@@ -19,6 +19,7 @@ import { AdminLayout } from "./components/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminCourses from "./pages/admin/AdminCourses";
+import AdminCourseForm from "./pages/admin/AdminCourseForm";
 import AdminEnrollments from "./pages/admin/AdminEnrollments";
 
 const queryClient = new QueryClient();
@@ -47,6 +48,8 @@ const App = () => (
               <Route index element={<AdminDashboard />} />
               <Route path="users" element={<AdminUsers />} />
               <Route path="courses" element={<AdminCourses />} />
+              <Route path="courses/new" element={<AdminCourseForm />} />
+              <Route path="courses/:courseId/edit" element={<AdminCourseForm />} />
               <Route path="enrollments" element={<AdminEnrollments />} />
             </Route>
             
