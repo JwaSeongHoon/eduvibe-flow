@@ -27,6 +27,7 @@ import { motion } from "framer-motion";
 import { mockCourses } from "@/data/mockData";
 import { useAuth } from "@/hooks/useAuth";
 import { useEnrollment } from "@/hooks/useEnrollment";
+import { useLessons } from "@/hooks/useLessons";
 
 const curriculum = [
   {
@@ -84,6 +85,7 @@ export default function CourseDetail() {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const { isEnrolled, loading: enrollmentLoading } = useEnrollment(courseId);
+  const { lessons, loading: lessonsLoading } = useLessons(courseId);
   const course = mockCourses.find((c) => c.id === courseId) || mockCourses[0];
   const [activeTab, setActiveTab] = useState<"curriculum" | "reviews">("curriculum");
 
@@ -104,7 +106,13 @@ export default function CourseDetail() {
   };
 
   const handleStartLearning = () => {
-    navigate(`/learn/${course.id}/1-1`);
+    // 등록된 레슨이 있으면 첫 번째 레슨으로 이동
+    if (lessons.length > 0) {
+      navigate(`/learn/${course.id}/${lessons[0].id}`);
+    } else {
+      // 레슨이 없으면 기본 경로로 이동
+      navigate(`/learn/${course.id}`);
+    }
   };
 
   return (
@@ -308,43 +316,53 @@ export default function CourseDetail() {
 
           {/* Curriculum */}
           {activeTab === "curriculum" && (
-            <Accordion type="single" collapsible className="space-y-3">
-              {curriculum.map((section, index) => (
-                <AccordionItem
-                  key={index}
-                  value={`section-${index}`}
-                  className="bg-card border border-border rounded-lg px-4"
-                >
-                  <AccordionTrigger className="hover:no-underline">
-                    <span className="font-semibold">{section.title}</span>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <div className="space-y-2 pb-2">
-                      {section.lessons.map((lesson) => (
-                        <div
-                          key={lesson.id}
-                          className="flex items-center justify-between p-3 rounded-lg hover:bg-secondary/50 transition-colors"
-                        >
-                          <div className="flex items-center gap-3">
-                            <Play className="w-4 h-4 text-muted-foreground" />
-                            <span className="text-foreground">{lesson.title}</span>
-                            {lesson.free && (
-                              <Badge variant="outline" className="text-primary border-primary text-xs">
-                                무료
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <span>{lesson.duration}</span>
-                            {!lesson.free && <Lock className="w-4 h-4" />}
-                          </div>
+            <div className="space-y-3">
+              {lessonsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                  <span className="ml-2 text-muted-foreground">레슨 로딩 중...</span>
+                </div>
+              ) : lessons.length > 0 ? (
+                <div className="bg-card border border-border rounded-lg">
+                  <div className="p-4 border-b border-border">
+                    <span className="font-semibold">전체 레슨 ({lessons.length}개)</span>
+                  </div>
+                  <div className="divide-y divide-border">
+                    {lessons.map((lesson, index) => (
+                      <div
+                        key={lesson.id}
+                        className="flex items-center justify-between p-4 hover:bg-secondary/50 transition-colors cursor-pointer"
+                        onClick={() => {
+                          if (isEnrolled || lesson.is_preview) {
+                            navigate(`/learn/${courseId}/${lesson.id}`);
+                          }
+                        }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-muted-foreground text-sm w-6">{index + 1}</span>
+                          <Play className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-foreground">{lesson.title}</span>
+                          {lesson.is_preview && (
+                            <Badge variant="outline" className="text-primary border-primary text-xs">
+                              미리보기
+                            </Badge>
+                          )}
                         </div>
-                      ))}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          {lesson.duration && <span>{lesson.duration}</span>}
+                          {!isEnrolled && !lesson.is_preview && <Lock className="w-4 h-4" />}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-card border border-border rounded-lg p-8 text-center">
+                  <BookOpen className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">아직 등록된 레슨이 없습니다.</p>
+                </div>
+              )}
+            </div>
           )}
 
           {/* Reviews */}
