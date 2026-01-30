@@ -87,8 +87,9 @@ export default function LearningPlayer() {
         video_url: l.video_url,
       }));
     }
-    // Fall back to mock lessons
-    const mocks = mockLessons[courseId || ""] || [];
+    // Fall back to mock lessons ONLY when this courseId is a mock course
+    const mocks = courseId ? mockLessons[courseId] : undefined;
+    if (!mocks) return [];
     return mocks.map(l => ({
       id: l.id,
       title: l.title,
@@ -489,13 +490,13 @@ export default function LearningPlayer() {
                           <div
                             className={cn(
                               "flex items-center gap-3 p-3 rounded-lg transition-colors",
-                              lesson.id === lessonId
+                              lesson.id === currentLesson?.id
                                 ? "bg-primary/10 text-primary"
                                 : "hover:bg-secondary text-foreground"
                             )}
                           >
                             {completedLessons.has(lesson.id) ? (
-                              <CheckCircle className="w-5 h-5 text-green-500 shrink-0" />
+                              <CheckCircle className="w-5 h-5 text-success shrink-0" />
                             ) : (
                               <Circle className="w-5 h-5 text-muted-foreground shrink-0" />
                             )}
