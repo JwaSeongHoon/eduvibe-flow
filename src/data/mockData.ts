@@ -73,26 +73,6 @@ export const mockCourses: CourseCardProps[] = [
   },
 ];
 
-// Mock lessons for demo purposes (when no DB lessons exist)
-export const mockLessons: Record<string, { id: string; title: string; duration: string; is_preview: boolean }[]> = {
-  "1": [
-    { id: "1-1", title: "강의 소개 및 학습 목표", duration: "5:30", is_preview: true },
-    { id: "1-2", title: "개발 환경 설정", duration: "12:45", is_preview: true },
-    { id: "1-3", title: "첫 번째 프로젝트 만들기", duration: "18:20", is_preview: false },
-    { id: "1-4", title: "컴포넌트 기초", duration: "25:00", is_preview: false },
-    { id: "1-5", title: "상태 관리의 이해", duration: "30:15", is_preview: false },
-  ],
-  "2": [
-    { id: "2-1", title: "Python 설치 및 환경 설정", duration: "8:00", is_preview: true },
-    { id: "2-2", title: "데이터 분석 기초", duration: "15:30", is_preview: false },
-    { id: "2-3", title: "Pandas 활용하기", duration: "22:00", is_preview: false },
-  ],
-  "3": [
-    { id: "3-1", title: "AI 개념 소개", duration: "10:00", is_preview: true },
-    { id: "3-2", title: "ChatGPT 활용법", duration: "20:00", is_preview: false },
-  ],
-};
-
 export const myCourses: (CourseCardProps & { progress: number })[] = [
   {
     ...mockCourses[0],

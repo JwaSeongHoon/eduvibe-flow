@@ -28,7 +28,6 @@ import { mockCourses } from "@/data/mockData";
 import { useAuth } from "@/hooks/useAuth";
 import { useEnrollment } from "@/hooks/useEnrollment";
 import { useLessons } from "@/hooks/useLessons";
-import { useCourse } from "@/hooks/useCourses";
 
 const curriculum = [
   {
@@ -87,40 +86,7 @@ export default function CourseDetail() {
   const { user, loading: authLoading } = useAuth();
   const { isEnrolled, loading: enrollmentLoading } = useEnrollment(courseId);
   const { lessons, loading: lessonsLoading } = useLessons(courseId);
-  const { course: dbCourse } = useCourse(courseId);
-  
-  // Try to find mock course first, otherwise use DB data
-  const mockCourse = mockCourses.find((c) => c.id === courseId);
-  
-  // Create a course-like object for display (mock -> DB -> placeholder)
-  const course =
-    mockCourse ||
-    (dbCourse
-      ? {
-          id: dbCourse.id,
-          title: dbCourse.title,
-          instructor: dbCourse.instructor,
-          thumbnail: dbCourse.thumbnail_url || "/placeholder.svg",
-          rating: 4.8,
-          reviewCount: 0,
-          duration: dbCourse.duration || "",
-          price: dbCourse.price,
-          originalPrice: dbCourse.original_price || undefined,
-          badges: dbCourse.is_published ? ["DB"] : ["DB", "미공개"],
-        }
-      : {
-          id: courseId || "",
-          title: "강좌를 불러오는 중...",
-          instructor: "",
-          thumbnail: "/placeholder.svg",
-          rating: 0,
-          reviewCount: 0,
-          duration: "",
-          price: 0,
-          originalPrice: undefined,
-          badges: [],
-        });
-  
+  const course = mockCourses.find((c) => c.id === courseId) || mockCourses[0];
   const [activeTab, setActiveTab] = useState<"curriculum" | "reviews">("curriculum");
 
   const discount = course.originalPrice

@@ -1,10 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-function isUuid(value: string) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
-}
-
 export interface Course {
   id: string;
   title: string;
@@ -58,14 +54,6 @@ export function useCourse(courseId: string | undefined) {
   useEffect(() => {
     async function fetchCourse() {
       if (!courseId) {
-        setLoading(false);
-        return;
-      }
-
-      // courses.id is UUID. Skip DB query for mock ids (e.g. "1").
-      if (!isUuid(courseId)) {
-        setCourse(null);
-        setError(null);
         setLoading(false);
         return;
       }

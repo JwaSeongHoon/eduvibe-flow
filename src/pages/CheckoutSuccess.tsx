@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
@@ -6,8 +6,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { CheckCircle, Loader2, XCircle, BookOpen, Home } from "lucide-react";
 import { motion } from "framer-motion";
 import { mockCourses } from "@/data/mockData";
-import { useCourse } from "@/hooks/useCourses";
-import { useLessons } from "@/hooks/useLessons";
 
 export default function CheckoutSuccess() {
   const [searchParams] = useSearchParams();
@@ -20,38 +18,8 @@ export default function CheckoutSuccess() {
   const orderId = searchParams.get("orderId");
   const amount = searchParams.get("amount");
   const courseId = searchParams.get("courseId");
-
-  const courseIdParam = courseId || undefined;
-  const { course: dbCourse } = useCourse(courseIdParam);
-  const { lessons } = useLessons(courseIdParam);
-
-  const course = useMemo(() => {
-    const mockCourse = courseIdParam
-      ? mockCourses.find((c) => c.id === courseIdParam)
-      : undefined;
-    if (mockCourse) return mockCourse;
-    if (dbCourse) {
-      return {
-        id: dbCourse.id,
-        title: dbCourse.title,
-        instructor: dbCourse.instructor,
-        thumbnail: dbCourse.thumbnail_url || "/placeholder.svg",
-        rating: 4.8,
-        reviewCount: 0,
-        duration: dbCourse.duration || "",
-        price: dbCourse.price,
-        originalPrice: dbCourse.original_price || undefined,
-        badges: dbCourse.is_published ? ["DB"] : ["DB", "미공개"],
-      };
-    }
-    return null;
-  }, [courseIdParam, dbCourse]);
-
-  const learnHref = useMemo(() => {
-    if (!courseIdParam) return "/courses";
-    if (lessons.length > 0) return `/learn/${courseIdParam}/${lessons[0].id}`;
-    return `/learn/${courseIdParam}`;
-  }, [courseIdParam, lessons]);
+  
+  const course = mockCourses.find((c) => c.id === courseId) || mockCourses[0];
 
   useEffect(() => {
     async function confirmPayment() {
@@ -134,29 +102,29 @@ export default function CheckoutSuccess() {
                   결제가 완료되었습니다!
                 </h1>
                 <p className="text-muted-foreground mb-6">
-                  {(course?.title || "해당") + " 강의를 수강하실 수 있습니다."}
+                  {course.title} 강의를 수강하실 수 있습니다.
                 </p>
                 
                 <div className="bg-secondary/50 rounded-lg p-4 mb-6 text-left">
                   <div className="flex gap-4">
                     <img
-                      src={course?.thumbnail || "/placeholder.svg"}
-                      alt={course?.title || "결제 완료"}
+                      src={course.thumbnail}
+                      alt={course.title}
                       className="w-20 h-14 object-cover rounded-lg"
                     />
                     <div>
                       <h3 className="font-medium text-foreground text-sm">
-                        {course?.title || "강의"}
+                        {course.title}
                       </h3>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {course?.instructor || ""}
+                        {course.instructor}
                       </p>
                     </div>
                   </div>
                 </div>
                 
                 <div className="space-y-3">
-                  <Link to={learnHref}>
+                  <Link to={`/learn/${course.id}/1-1`}>
                     <Button className="w-full gradient-vibe text-primary-foreground glow-primary">
                       <BookOpen className="w-4 h-4 mr-2" />
                       지금 바로 학습하기
@@ -190,26 +158,16 @@ export default function CheckoutSuccess() {
                 </p>
                 
                 <div className="space-y-3">
-                  {courseIdParam ? (
-                    <>
-                      <Link to={`/checkout/${courseIdParam}`}>
-                        <Button className="w-full gradient-vibe text-primary-foreground">
-                          다시 시도하기
-                        </Button>
-                      </Link>
-                      <Link to={`/courses/${courseIdParam}`}>
-                        <Button variant="outline" className="w-full">
-                          강의 페이지로 돌아가기
-                        </Button>
-                      </Link>
-                    </>
-                  ) : (
-                    <Link to="/courses">
-                      <Button variant="outline" className="w-full">
-                        강의 목록으로 이동
-                      </Button>
-                    </Link>
-                  )}
+                  <Link to={`/checkout/${course.id}`}>
+                    <Button className="w-full gradient-vibe text-primary-foreground">
+                      다시 시도하기
+                    </Button>
+                  </Link>
+                  <Link to={`/courses/${course.id}`}>
+                    <Button variant="outline" className="w-full">
+                      강의 페이지로 돌아가기
+                    </Button>
+                  </Link>
                 </div>
               </>
             )}

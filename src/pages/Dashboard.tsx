@@ -162,7 +162,7 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
               ) : enrolledCourses.length > 0 ? (
-                <Link to={`/learn/${enrolledCourses[0].id}`}>
+                <Link to={`/learn/${enrolledCourses[0].id}/1-1`}>
                   <Card className="bg-card border-border hover:border-primary/50 transition-colors cursor-pointer">
                     <CardContent className="p-0">
                       <div className="flex flex-col md:flex-row">
