@@ -4,6 +4,7 @@ import { CourseCard } from "@/components/course/CourseCard";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar";
+import { Button } from "@/components/ui/button";
 import {
   BookOpen,
   Clock,
@@ -11,11 +12,13 @@ import {
   Trophy,
   TrendingUp,
   Play,
+  LogIn,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { myCourses } from "@/data/mockData";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 const weeklyStats = [
   { day: "월", hours: 2 },
@@ -35,11 +38,56 @@ const achievements = [
 
 export default function Dashboard() {
   const [date, setDate] = useState<Date | undefined>(new Date());
+  const { user, loading } = useAuth();
   const maxHours = Math.max(...weeklyStats.map((d) => d.hours));
 
   const totalHours = weeklyStats.reduce((sum, d) => sum + d.hours, 0);
   const streak = 7;
   const completedCourses = 3;
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container pt-24 pb-12 flex items-center justify-center">
+          <div className="text-muted-foreground">로딩 중...</div>
+        </main>
+      </div>
+    );
+  }
+
+  // Show login prompt if not authenticated
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container pt-24 pb-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center justify-center min-h-[60vh] text-center"
+          >
+            <div className="w-20 h-20 rounded-full bg-secondary flex items-center justify-center mb-6">
+              <BookOpen className="w-10 h-10 text-muted-foreground" />
+            </div>
+            <h1 className="text-2xl font-bold text-foreground mb-2">
+              로그인이 필요합니다
+            </h1>
+            <p className="text-muted-foreground mb-6 max-w-md">
+              내 학습실을 이용하려면 로그인해주세요. 학습 진도, 통계, 달성 배지를 확인할 수 있습니다.
+            </p>
+            <Link to="/auth">
+              <Button className="gradient-vibe text-primary-foreground">
+                <LogIn className="w-4 h-4 mr-2" />
+                로그인하기
+              </Button>
+            </Link>
+          </motion.div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
