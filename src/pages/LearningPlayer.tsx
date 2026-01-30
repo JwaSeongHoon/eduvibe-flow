@@ -31,9 +31,14 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useEnrollment } from "@/hooks/useEnrollment";
 import { useCourse } from "@/hooks/useCourses";
+import { useCourses } from "@/hooks/useCourses";
 import { useLessons, Lesson, getSignedVideoUrl } from "@/hooks/useLessons";
 import { Card, CardContent } from "@/components/ui/card";
 import { mockCourses, mockLessons } from "@/data/mockData";
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
 
 const materials = [
   { name: "강의자료.pdf", size: "2.4 MB" },
@@ -56,6 +61,7 @@ export default function LearningPlayer() {
   const { user, loading: authLoading } = useAuth();
   const { isEnrolled, loading: enrollmentLoading } = useEnrollment(courseId);
   const { course: dbCourse, loading: courseLoading } = useCourse(courseId);
+  const { courses: dbCourses } = useCourses();
   const { lessons: dbLessons, loading: lessonsLoading } = useLessons(courseId);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -75,6 +81,21 @@ export default function LearningPlayer() {
     thumbnail_url: mockCourse.thumbnail,
     instructor: mockCourse.instructor,
   } : null);
+
+  // If user enters via a legacy/mock link (/learn/1/...), redirect to matching DB course by title.
+  useEffect(() => {
+    if (!courseId) return;
+    if (isUuid(courseId)) return;
+    if (!mockCourse) return;
+    if (!dbCourses || dbCourses.length === 0) return;
+
+    const match = dbCourses.find(
+      (c) => c.title.trim().toLowerCase() === mockCourse.title.trim().toLowerCase()
+    );
+    if (match) {
+      navigate(`/learn/${match.id}`, { replace: true });
+    }
+  }, [courseId, mockCourse, dbCourses, navigate]);
 
   // Combine DB lessons with mock lessons
   const lessons: DisplayLesson[] = useMemo(() => {

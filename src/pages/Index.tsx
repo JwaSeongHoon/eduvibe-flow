@@ -4,8 +4,38 @@ import { CourseCarousel } from "@/components/course/CourseCarousel";
 import { CategoryTabs } from "@/components/course/CategoryTabs";
 import { AITutorButton } from "@/components/ai/AITutorButton";
 import { mockCourses, categories } from "@/data/mockData";
+import { useCourses } from "@/hooks/useCourses";
+import { useMemo } from "react";
+import type { CourseCardProps } from "@/components/course/CourseCard";
 
 const Index = () => {
+  const { courses: dbCourses } = useCourses();
+
+  const allCourses: CourseCardProps[] = useMemo(() => {
+    const dbCourseCards: CourseCardProps[] = dbCourses.map((c) => ({
+      id: c.id,
+      title: c.title,
+      instructor: c.instructor,
+      thumbnail:
+        c.thumbnail_url ||
+        "https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=600&h=340&fit=crop",
+      rating: 4.8,
+      reviewCount: 0,
+      duration: c.duration || "",
+      price: c.price,
+      originalPrice: c.original_price || undefined,
+      badges: c.is_published ? ["DB"] : ["DB", "미공개"],
+    }));
+
+    // Keep demo content, but avoid duplicate titles when a DB course exists
+    const dbTitles = new Set(dbCourses.map((c) => c.title.toLowerCase()));
+    const filteredMocks = mockCourses.filter(
+      (m) => !dbTitles.has(m.title.toLowerCase())
+    );
+
+    return [...dbCourseCards, ...filteredMocks];
+  }, [dbCourses]);
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -22,19 +52,19 @@ const Index = () => {
       <CourseCarousel
         title="🔥 실시간 BEST 강의"
         subtitle="지금 가장 인기 있는 강의를 만나보세요"
-        courses={mockCourses}
+        courses={allCourses}
       />
 
       <CourseCarousel
         title="✨ AI 추천 강의"
         subtitle="당신의 학습 성향에 맞춘 맞춤 추천"
-        courses={[...mockCourses].reverse()}
+        courses={[...allCourses].reverse()}
       />
 
       <CourseCarousel
         title="🚀 신규 강의"
         subtitle="새롭게 출시된 따끈따끈한 강의"
-        courses={mockCourses.filter((c) => c.badges?.includes("NEW"))}
+        courses={allCourses.slice(0, 12)}
       />
 
       {/* Footer */}
